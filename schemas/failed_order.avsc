@@ -1,0 +1,19 @@
+{
+  "type": "record",
+  "name": "FailedOrder",
+  "namespace": "com.bigdata.orders",
+  "doc": "An order that could not be processed, with failure context for triage.",
+  "fields": [
+    { "name": "orderId",        "type": "string", "doc": "Original order identifier" },
+    { "name": "product",        "type": "string", "doc": "Original product name" },
+    { "name": "price",          "type": "float",  "doc": "Original price" },
+    { "name": "errorType",      "type": "string", "doc": "TransientError or PermanentError" },
+    { "name": "errorMessage",   "type": "string", "doc": "Exception detail" },
+    { "name": "retryCount",     "type": "int",    "doc": "Attempts made before giving up" },
+    { "name": "failedAt",       "type": { "type": "long", "logicalType": "timestamp-millis" },
+      "doc": "When the message was routed to the DLQ" },
+    { "name": "sourceTopic",    "type": "string", "doc": "Topic the message came from" },
+    { "name": "sourcePartition","type": "int",    "doc": "Partition it was read from" },
+    { "name": "sourceOffset",   "type": "long",   "doc": "Offset it was read from" }
+  ]
+}
