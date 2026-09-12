@@ -40,6 +40,15 @@ def delivery_report(err, msg):
         f"  delivered -> partition {msg.partition()} offset {msg.offset()}"
     )
 
+def build_poison_order(sequence: int) -> dict:
+    """Deliberately invalid orders to exercise the permanent-failure path."""
+    variants = [
+        {"orderId": str(9000 + sequence), "product": "Item1", "price": -50.0},
+        {"orderId": str(9000 + sequence), "product": "HackedItem", "price": 99.0},
+        {"orderId": str(9000 + sequence), "product": "Item2", "price": 999_999.0},
+        {"orderId": f"BAD-{sequence}", "product": "Item3", "price": 25.0},
+    ]
+    return variants[sequence % len(variants)]
 
 def main():
     parser = argparse.ArgumentParser(description="Order event producer")
@@ -47,6 +56,8 @@ def main():
                         help="number of orders to send")
     parser.add_argument("--delay", type=float, default=1.0,
                         help="seconds between messages")
+    parser.add_argument("--poison", type=int, default=0,
+                        help="number of deliberately invalid orders to inject")
     args = parser.parse_args()
 
     schema_str = SCHEMA_PATH.read_text(encoding="utf-8")
@@ -79,7 +90,19 @@ def main():
 
         producer.poll(0)
         time.sleep(args.delay)
-
+    for j in range(args.poison):
+        bad = build_poison_order(j)
+        ctx = SerializationContext(ORDERS_TOPIC, MessageField.VALUE)
+        producer.produce(
+            topic=ORDERS_TOPIC,
+            key=key_serializer(bad["orderId"]),
+            value=avro_serializer(bad, ctx),
+            on_delivery=delivery_report,
+        )
+        print(f"[POISON {j + 1}/{args.poison}] {bad}")
+        producer.poll(0)
+        time.sleep(args.delay)
+        
     remaining = producer.flush(10)
     if remaining:
         print(f"WARNING: {remaining} messages undelivered")

@@ -52,8 +52,6 @@ def main():
     registry = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
     avro_deserializer = AvroDeserializer(registry, schema_str)
     key_deserializer = StringDeserializer("utf_8")
-    dlq = DeadLetterQueue()
-    dlq_count = 0
 
     consumer = Consumer({
         "bootstrap.servers": BOOTSTRAP_SERVERS,
@@ -64,6 +62,8 @@ def main():
     consumer.subscribe([ORDERS_TOPIC])
 
     stats = RunningAverage()
+    dlq = DeadLetterQueue()
+    dlq_count = 0
     print(f"Consuming from '{ORDERS_TOPIC}' as group '{CONSUMER_GROUP}'")
     print("Ctrl+C to stop.\n")
 
@@ -99,8 +99,11 @@ def main():
             consumer.commit(message=msg, asynchronous=False)
 
     except KeyboardInterrupt:
-        print(f"\n\nFinal: {stats.count} orders, average price {stats.average:.4f}")
+        print(f"\n\nProcessed OK : {stats.count}")
+        print(f"Sent to DLQ  : {dlq_count}")
+        print(f"Average price: {stats.average:.4f}")
     finally:
+        dlq.close()
         consumer.close()
 
 
