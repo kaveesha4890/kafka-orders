@@ -12,3 +12,11 @@ CONSUMER_GROUP = "order-aggregator"
 SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "order.avsc"
 
 PRODUCTS = ["Item1", "Item2", "Item3", "Item4", "Item5"]
+
+# Probability a message hits a simulated transient fault (0.0 - 1.0)
+TRANSIENT_FAILURE_RATE = float(os.getenv("TRANSIENT_FAILURE_RATE", "0.3"))
+
+# Retry policy
+MAX_RETRIES = int(os.getenv("MAX_RETRIES", "3"))
+BASE_BACKOFF_SECONDS = 0.5
+MAX_BACKOFF_SECONDS = 8.0
