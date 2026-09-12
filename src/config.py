@@ -10,6 +10,7 @@ DLQ_TOPIC = "orders-dlq"
 CONSUMER_GROUP = "order-aggregator"
 
 SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "order.avsc"
+DLQ_SCHEMA_PATH = pathlib.Path(__file__).parent.parent / "schemas" / "failed_order.avsc"
 
 PRODUCTS = ["Item1", "Item2", "Item3", "Item4", "Item5"]
 
