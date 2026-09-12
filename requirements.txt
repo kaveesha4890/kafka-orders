@@ -1,2 +1,2 @@
-confluent-kafka[avro,schemaregistry]==2.5.0
+confluent-kafka[avro,schemaregistry]==2.6.1
 requests==2.32.3
