@@ -20,6 +20,9 @@ from config import (
 
 from retry import run_with_retry
 from processing import process_order
+from dlq import DeadLetterQueue
+from errors import PermanentError
+from config import MAX_RETRIES
 
 
 class RunningAverage:
@@ -49,6 +52,8 @@ def main():
     registry = SchemaRegistryClient({"url": SCHEMA_REGISTRY_URL})
     avro_deserializer = AvroDeserializer(registry, schema_str)
     key_deserializer = StringDeserializer("utf_8")
+    dlq = DeadLetterQueue()
+    dlq_count = 0
 
     consumer = Consumer({
         "bootstrap.servers": BOOTSTRAP_SERVERS,
@@ -87,8 +92,9 @@ def main():
                 avg = stats.update(order["price"])
                 print(f"      OK | count={stats.count:<4} avg={avg:.4f}")
             else:
-                # Step 7 replaces this with DLQ routing
-                print(f"      DROPPED (DLQ pending): {error}")
+                attempts = 1 if isinstance(error, PermanentError) else MAX_RETRIES
+                dlq.send(order, error, msg, attempts)
+                dlq_count += 1
 
             consumer.commit(message=msg, asynchronous=False)
 
