@@ -18,6 +18,9 @@ from config import (
     SCHEMA_PATH,
 )
 
+from retry import run_with_retry
+from processing import process_order
+
 
 class RunningAverage:
     """Incremental mean over an unbounded stream.
@@ -75,17 +78,18 @@ def main():
             order = avro_deserializer(msg.value(), ctx)
             key = key_deserializer(msg.key()) if msg.key() else None
 
-            avg = stats.update(order["price"])
+            print(f"p{msg.partition()}@{msg.offset():<4} key={key:<6} "
+                  f"{order['product']:<6} price={order['price']:>8.2f}")
 
-            print(
-                f"p{msg.partition()}@{msg.offset():<4} "
-                f"key={key:<6} "
-                f"{order['product']:<6} "
-                f"price={order['price']:>8.2f} | "
-                f"count={stats.count:<4} avg={avg:.4f}"
-            )
+            ok, error = run_with_retry(process_order, order)
 
-            # Commit only AFTER successful processing -> at-least-once
+            if ok:
+                avg = stats.update(order["price"])
+                print(f"      OK | count={stats.count:<4} avg={avg:.4f}")
+            else:
+                # Step 7 replaces this with DLQ routing
+                print(f"      DROPPED (DLQ pending): {error}")
+
             consumer.commit(message=msg, asynchronous=False)
 
     except KeyboardInterrupt:
